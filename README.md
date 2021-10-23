@@ -12,6 +12,12 @@ VM](https://docs.avax.network/build/tutorials/platform/create-custom-blockchain)
 You must have [Golang](https://golang.org/doc/install) >= `1.16` and a configured
 [`$GOPATH`](https://github.com/golang/go/wiki/SettingGOPATH).
 
+## Debugging with VS Code
+
+- From the `ava-sim` project root, run `./scripts/prepare-system-plugins.sh`
+- On the left-hand-side, navigate to `Run and Debug`, and select one of the options defined in the `launch.json` to either
+debug with the default vm or the included zcashvm.
+
 ## Standard Network
 To spin up a standard 5 node network, just run `./scripts/run.sh`. When the
 network is running, you'll see the following logs printed:
