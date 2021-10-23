@@ -8,8 +8,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/ava-labs/ava-sim/constants"
-	"github.com/ava-labs/ava-sim/utils"
+	"github.com/rkass/ava-sim/constants"
+	"github.com/rkass/ava-sim/utils"
 
 	"github.com/ava-labs/avalanchego/api/info"
 	"github.com/ava-labs/avalanchego/app/process"
