@@ -7,8 +7,8 @@ import (
 	"io/ioutil"
 	"time"
 
-	"github.com/rkass/ava-sim/constants"
-	"github.com/rkass/ava-sim/manager"
+	"github.com/zapalabs/ava-sim/constants"
+	"github.com/zapalabs/ava-sim/manager"
 
 	"github.com/ava-labs/avalanchego/api"
 	"github.com/ava-labs/avalanchego/api/info"

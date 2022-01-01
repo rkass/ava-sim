@@ -1,4 +1,4 @@
-module github.com/rkass/ava-sim
+module github.com/zapalabs/ava-sim
 
 go 1.16
 

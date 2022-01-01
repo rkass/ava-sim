@@ -9,8 +9,8 @@ import (
 	"syscall"
 
 	"github.com/fatih/color"
-	"github.com/rkass/ava-sim/manager"
-	"github.com/rkass/ava-sim/runner"
+	"github.com/zapalabs/ava-sim/manager"
+	"github.com/zapalabs/ava-sim/runner"
 	"golang.org/x/sync/errgroup"
 )
 

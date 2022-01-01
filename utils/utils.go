@@ -8,7 +8,7 @@ import (
 	"io"
 	"os"
 
-	"github.com/rkass/ava-sim/constants"
+	"github.com/zapalabs/ava-sim/constants"
 
 	"github.com/ava-labs/avalanchego/ids"
 	avalancheContants "github.com/ava-labs/avalanchego/utils/constants"
