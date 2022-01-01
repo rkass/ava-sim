@@ -16,7 +16,7 @@ You must have [Golang](https://golang.org/doc/install) >= `1.16` and a configure
 
 - From the `ava-sim` project root, run `./scripts/prepare-system-plugins.sh`
 - On the left-hand-side, navigate to `Run and Debug`, and select one of the options defined in the `launch.json` to either
-debug with the default vm or the included zcashvm.
+debug with the default vm or the included zapavm.
 - After stopping the process in VS code, I've found that the subprocesses don't exit and that I need to run `pkill -f 'ava-sim' in order to get everything to exit.
 
 ## Standard Network

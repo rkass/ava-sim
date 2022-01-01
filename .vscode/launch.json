@@ -18,7 +18,7 @@
             "mode": "auto",
             "program": "${workspaceFolder}/main/main.go",
             "cwd": "${workspaceFolder}",
-            "args": ["${workspaceFolder}/../zcashvm/builds/zcashvm", "${workspaceFolder}/../zcashvm/builds/emptygenesis.txt"]
+            "args": ["${workspaceFolder}/../zapavm/builds/zapavm", "${workspaceFolder}/../zapavm/builds/emptygenesis.txt"]
         }
     ]
 }
