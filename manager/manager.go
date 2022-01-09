@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strconv"
 	"time"
 
 	"github.com/zapalabs/ava-sim/constants"
@@ -117,6 +118,7 @@ func StartNetwork(ctx context.Context, vmPath string, bootstrapped chan struct{}
 
 		df := defaultFlags()
 		df.LogLevel = "info"
+		// df.ChainConfigDir = "/avalanche-configs/"
 		df.LogDir = fmt.Sprintf("%s/logs", nodeDir)
 		df.DBDir = fmt.Sprintf("%s/db", nodeDir)
 		df.StakingEnabled = true
@@ -139,6 +141,11 @@ func StartNetwork(ctx context.Context, vmPath string, bootstrapped chan struct{}
 			panic(err)
 		}
 		nodeConfig.PluginDir = pluginsDir
+
+		// write node id of node
+		f, _ := os.Create("/node-ids/" + strconv.Itoa(i))
+		f.Write([]byte(NodeIDs()[i]))
+		f.Close()
 		nodeConfigs[i] = nodeConfig
 	}
 
@@ -147,6 +154,7 @@ func StartNetwork(ctx context.Context, vmPath string, bootstrapped chan struct{}
 	for i, config := range nodeConfigs {
 		c := config
 		j := i
+
 		g.Go(func() error {
 			return runApp(g, gctx, j, c)
 		})
@@ -210,6 +218,7 @@ func checkBootstrapped(ctx context.Context, bootstrapped chan struct{}) error {
 }
 
 func runApp(g *errgroup.Group, ctx context.Context, nodeNum int, config node.Config) error {
+
 	app := process.NewApp(config)
 
 	// Start running the AvalancheGo application
