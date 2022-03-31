@@ -28,11 +28,11 @@ const (
 	validatorEndDiff   = 30 * 24 * time.Hour // 30 days
 )
 
-func SetupSubnet(ctx context.Context, vmGenesis string) error {
+func SetupSubnet(ctx context.Context, nodeNums []int, vmGenesis string) error {
 	color.Cyan("creating subnet")
 	var (
-		nodeURLs = manager.NodeURLs()
-		nodeIDs  = manager.NodeIDs()
+		nodeURLs = manager.NodeURLs(nodeNums)
+		nodeIDs  = manager.NodeIDs(nodeNums)
 
 		userPass = api.UserPass{
 			Username: "test",
@@ -98,7 +98,7 @@ func SetupSubnet(ctx context.Context, vmGenesis string) error {
 	}
 
 	// Add all validators to subnet with equal weight
-	for _, nodeID := range manager.NodeIDs() {
+	for _, nodeID := range manager.NodeIDs(nodeNums) {
 		txID, err := client.AddSubnetValidator(
 			userPass, []string{fundedAddress}, fundedAddress,
 			subnetID, nodeID, validatorWeight,

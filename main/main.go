@@ -9,6 +9,7 @@ import (
 	"syscall"
 
 	"github.com/fatih/color"
+	"github.com/zapalabs/ava-sim/constants"
 	"github.com/zapalabs/ava-sim/manager"
 	"github.com/zapalabs/ava-sim/runner"
 	"golang.org/x/sync/errgroup"
@@ -18,6 +19,12 @@ func main() {
 	var vm, vmGenesis string
 	switch len(os.Args) {
 	case 1: // normal network
+	case 2: // new node for existing network
+		vm = path.Clean(os.Args[1])
+		if _, err := os.Stat(vm); os.IsNotExist(err) {
+			panic(fmt.Sprintf("%s does not exist", vm))
+		}
+		color.Yellow("vm set to: %s", vm)
 	case 3:
 		vm = path.Clean(os.Args[1])
 		if _, err := os.Stat(vm); os.IsNotExist(err) {
@@ -34,8 +41,6 @@ func main() {
 		panic("invalid arguments (expecting no arguments or [vm] [vm-genesis])")
 	}
 
-	// Start local network
-	bootstrapped := make(chan struct{})
 	ctx := context.Background()
 	ctx, cancel := context.WithCancel(ctx)
 	g, gctx := errgroup.WithContext(ctx)
@@ -59,20 +64,33 @@ func main() {
 		return nil
 	})
 
-	g.Go(func() error {
-		return manager.StartNetwork(gctx, vm, bootstrapped)
-	})
+	if vmGenesis != "" {
+		// Start local network
+		bootstrapped := make(chan struct{})
 
-	// Only setup network if a custom VM is provided and the network has finished
-	// bootstrapping
-	select {
-	case <-bootstrapped:
-		if len(vm) > 0 && gctx.Err() == nil {
-			g.Go(func() error {
-				return runner.SetupSubnet(gctx, vmGenesis)
-			})
+		nodeNums := make([]int, constants.NumNodes)
+		for i := 0; i < constants.NumNodes; i++ {
+			nodeNums[i] = i
 		}
-	case <-gctx.Done():
+
+		g.Go(func() error {
+			
+			return manager.StartNetwork(gctx, vm, nodeNums, bootstrapped)
+		})
+
+		// Only setup network if a custom VM is provided and the network has finished
+		// bootstrapping
+		select {
+		case <-bootstrapped:
+			if len(vm) > 0 && gctx.Err() == nil {
+				g.Go(func() error {
+					return runner.SetupSubnet(gctx, nodeNums, vmGenesis)
+				})
+			}
+		case <-gctx.Done():
+		}
+	} else {
+		color.Yellow("setting up 1 node")
 	}
 
 	color.Red("ava-sim exited with error: %s", g.Wait())

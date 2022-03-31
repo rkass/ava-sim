@@ -52,14 +52,16 @@ var (
 	//go:embed certs/keys5/staker.key
 	keys5StakerKey []byte
 
+
 	nodeCerts = [][]byte{keys1StakerCrt, keys2StakerCrt, keys3StakerCrt, keys4StakerCrt, keys5StakerCrt}
 	nodeKeys  = [][]byte{keys1StakerKey, keys2StakerKey, keys3StakerKey, keys4StakerKey, keys5StakerKey}
 )
 
-func NodeIDs() []string {
+func NodeIDs(nodeNums[] int) []string {
 	nodeCerts := [][]byte{keys1StakerCrt, keys2StakerCrt, keys3StakerCrt, keys4StakerCrt, keys5StakerCrt}
-	nodeIDs := make([]string, constants.NumNodes)
-	for i, cert := range nodeCerts {
+	nodeIDs := make([]string, len(nodeNums))
+	for i, nodeNum := range nodeNums {
+		cert := nodeCerts[nodeNum]
 		id, err := utils.LoadNodeID(cert)
 		if err != nil {
 			panic(err)
@@ -69,15 +71,15 @@ func NodeIDs() []string {
 	return nodeIDs
 }
 
-func NodeURLs() []string {
-	urls := make([]string, constants.NumNodes)
-	for i := 0; i < constants.NumNodes; i++ {
-		urls[i] = fmt.Sprintf("http://127.0.0.1:%d", constants.BaseHTTPPort+i*2)
+func NodeURLs(nodeNums[] int) []string {
+	urls := make([]string, len(nodeNums))
+	for i, nodeNum := range nodeNums {
+		urls[i] = fmt.Sprintf("http://127.0.0.1:%d", constants.BaseHTTPPort+nodeNum*2)
 	}
 	return urls
 }
 
-func StartNetwork(ctx context.Context, vmPath string, bootstrapped chan struct{}) error {
+func StartNetwork(ctx context.Context, vmPath string, nodeNums []int, bootstrapped chan struct{}) error {
 	dir, err := ioutil.TempDir("", "ava-sim")
 	if err != nil {
 		panic(err)
@@ -103,50 +105,7 @@ func StartNetwork(ctx context.Context, vmPath string, bootstrapped chan struct{}
 
 	nodeConfigs := make([]node.Config, constants.NumNodes)
 	for i := 0; i < constants.NumNodes; i++ {
-		nodeDir := fmt.Sprintf("%s/node%d", dir, i+1)
-		if err := os.MkdirAll(nodeDir, os.FileMode(constants.FilePerms)); err != nil {
-			panic(err)
-		}
-		certFile := fmt.Sprintf("%s/staker.crt", nodeDir)
-		if err := ioutil.WriteFile(certFile, nodeCerts[i], os.FileMode(constants.FilePerms)); err != nil {
-			panic(err)
-		}
-		keyFile := fmt.Sprintf("%s/staker.key", nodeDir)
-		if err := ioutil.WriteFile(keyFile, nodeKeys[i], os.FileMode(constants.FilePerms)); err != nil {
-			panic(err)
-		}
-
-		df := defaultFlags()
-		df.LogLevel = "info"
-		// df.ChainConfigDir = "/avalanche-configs/"
-		df.LogDir = fmt.Sprintf("%s/logs", nodeDir)
-		df.DBDir = fmt.Sprintf("%s/db", nodeDir)
-		df.StakingEnabled = true
-		df.HTTPPort = uint(constants.BaseHTTPPort + 2*i)
-		df.StakingPort = uint(constants.BaseHTTPPort + 2*i + 1)
-		if i != 0 {
-			df.BootstrapIPs = bootstrapIP
-			df.BootstrapIDs = bootstrapID
-		} else {
-			df.BootstrapIPs = ""
-			df.BootstrapIDs = ""
-		}
-		if len(vmPath) > 0 {
-			df.WhitelistedSubnets = constants.WhitelistedSubnets
-		}
-		df.StakingTLSCertFile = certFile
-		df.StakingTLSKeyFile = keyFile
-		nodeConfig, err := createNodeConfig(pluginsDir, flagsToArgs(df))
-		if err != nil {
-			panic(err)
-		}
-		nodeConfig.PluginDir = pluginsDir
-
-		// write node id of node
-		f, _ := os.Create("/node-ids/" + strconv.Itoa(i))
-		f.Write([]byte(NodeIDs()[i]))
-		f.Close()
-		nodeConfigs[i] = nodeConfig
+		nodeConfigs[i] = getNodeConfig(i, dir, vmPath, pluginsDir)
 	}
 
 	// Start all nodes and check if bootstrapped
@@ -160,19 +119,67 @@ func StartNetwork(ctx context.Context, vmPath string, bootstrapped chan struct{}
 		})
 	}
 	g.Go(func() error {
-		return checkBootstrapped(gctx, bootstrapped)
+		return checkBootstrapped(gctx, nodeNums, bootstrapped)
 	})
 	return g.Wait()
 }
 
-func checkBootstrapped(ctx context.Context, bootstrapped chan struct{}) error {
+// nodeNum is 0-indexed
+func getNodeConfig(nodeNum int, dir string, vmPath string, pluginsDir string) node.Config {
+	nodeDir := fmt.Sprintf("%s/node%d", dir, nodeNum+1)
+	if err := os.MkdirAll(nodeDir, os.FileMode(constants.FilePerms)); err != nil {
+		panic(err)
+	}
+	certFile := fmt.Sprintf("%s/staker.crt", nodeDir)
+	if err := ioutil.WriteFile(certFile, nodeCerts[nodeNum], os.FileMode(constants.FilePerms)); err != nil {
+		panic(err)
+	}
+	keyFile := fmt.Sprintf("%s/staker.key", nodeDir)
+	if err := ioutil.WriteFile(keyFile, nodeKeys[nodeNum], os.FileMode(constants.FilePerms)); err != nil {
+		panic(err)
+	}
+
+	df := defaultFlags()
+	df.LogLevel = "info"
+	df.LogDir = fmt.Sprintf("%s/logs", nodeDir)
+	df.DBDir = fmt.Sprintf("%s/db", nodeDir)
+	df.StakingEnabled = true
+	df.HTTPPort = uint(constants.BaseHTTPPort + 2*nodeNum)
+	df.StakingPort = uint(constants.BaseHTTPPort + 2*nodeNum + 1)
+	if nodeNum != 0 {
+		df.BootstrapIPs = bootstrapIP
+		df.BootstrapIDs = bootstrapID
+	} else {
+		df.BootstrapIPs = ""
+		df.BootstrapIDs = ""
+	}
+	if len(vmPath) > 0 {
+		df.WhitelistedSubnets = constants.WhitelistedSubnets
+	}
+	df.StakingTLSCertFile = certFile
+	df.StakingTLSKeyFile = keyFile
+	nodeConfig, err := createNodeConfig(pluginsDir, flagsToArgs(df))
+	if err != nil {
+		panic(err)
+	}
+	nodeConfig.PluginDir = pluginsDir
+
+	// write node id of node
+	f, _ := os.Create("/node-ids/" + strconv.Itoa(nodeNum))
+	nodeNums := []int{nodeNum}
+	f.Write([]byte(NodeIDs(nodeNums)[0]))
+	f.Close()
+	return nodeConfig
+}
+
+func checkBootstrapped(ctx context.Context, nodeNums []int, bootstrapped chan struct{}) error {
 	if bootstrapped == nil {
 		return nil
 	}
 
 	var (
-		nodeURLs = NodeURLs()
-		nodeIDs  = NodeIDs()
+		nodeURLs = NodeURLs(nodeNums)
+		nodeIDs  = NodeIDs(nodeNums)
 	)
 
 	for i, url := range nodeURLs {
