@@ -103,9 +103,9 @@ func StartNetwork(ctx context.Context, vmPath string, nodeNums []int, bootstrapp
 		}
 	}
 
-	nodeConfigs := make([]node.Config, constants.NumNodes)
-	for i := 0; i < constants.NumNodes; i++ {
-		nodeConfigs[i] = getNodeConfig(i, dir, vmPath, pluginsDir)
+	nodeConfigs := make([]node.Config, len(nodeNums))
+	for i, nodeNum := range nodeNums {
+		nodeConfigs[i] = getNodeConfig(nodeNum, dir, vmPath, pluginsDir)
 	}
 
 	// Start all nodes and check if bootstrapped
@@ -167,7 +167,8 @@ func getNodeConfig(nodeNum int, dir string, vmPath string, pluginsDir string) no
 	// write node id of node
 	f, _ := os.Create("/node-ids/" + strconv.Itoa(nodeNum))
 	nodeNums := []int{nodeNum}
-	f.Write([]byte(NodeIDs(nodeNums)[0]))
+	nodeIds := NodeIDs(nodeNums)
+	f.Write([]byte(nodeIds[0]))
 	f.Close()
 	return nodeConfig
 }

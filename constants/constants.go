@@ -13,7 +13,7 @@ const (
 
 	HTTPTimeout  = 10 * time.Second
 	BaseHTTPPort = 9650
-	NumNodes     = 5 //not working w 2
+	NumNodes     = 3 //not working w 2
 
 	FilePerms = 0777
 )

@@ -17,7 +17,8 @@ func createNodeConfig(pluginDir string, args []string) (node.Config, error) {
 		return node.Config{}, err
 	}
 
-	return config.GetNodeConfig(v, pluginDir)
+	conf, err := config.GetNodeConfig(v, pluginDir)
+	return conf, err
 }
 
 // Flags represents available CLI flags when starting a node
