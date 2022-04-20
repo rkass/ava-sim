@@ -2,12 +2,15 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"os"
 	"os/signal"
 	"path"
+	"strconv"
 	"syscall"
 
+	// "github.com/ava-labs/avalanchego/staking"
 	"github.com/fatih/color"
 	"github.com/zapalabs/ava-sim/constants"
 	"github.com/zapalabs/ava-sim/manager"
@@ -16,6 +19,8 @@ import (
 )
 
 func main() {
+	x := 3
+	color.Yellow(strconv.Itoa(x))
 	var vm, vmGenesis string
 	switch len(os.Args) {
 	case 1: // normal network
@@ -37,6 +42,11 @@ func main() {
 			panic(fmt.Sprintf("%s does not exist", vmGenesis))
 		}
 		color.Yellow("vm-genesis set to: %s", vmGenesis)
+	case 4:
+		// staking.InitNodeStakingKeyPair("/Users/rkass/repos/zapa/ava-sim/manager/certs/keys6/staker.key", "/Users/rkass/repos/zapa/ava-sim/manager/certs/keys6/staker.crt")
+		p, e := tls.LoadX509KeyPair("/Users/rkass/repos/zapa/ava-sim/manager/certs/keys6/staker.crt", "/Users/rkass/repos/zapa/ava-sim/manager/certs/keys6/staker.key")
+		color.Yellow("initialized staking pair for node 6 %s %s", p, e)
+		os.Exit(0)
 	default:
 		panic("invalid arguments (expecting no arguments or [vm] [vm-genesis])")
 	}
@@ -84,13 +94,31 @@ func main() {
 		case <-bootstrapped:
 			if len(vm) > 0 && gctx.Err() == nil {
 				g.Go(func() error {
-					return runner.SetupSubnet(gctx, nodeNums, vmGenesis)
+					return runner.SetupSubnet(gctx, nodeNums, vmGenesis, true)
 				})
 			}
 		case <-gctx.Done():
 		}
 	} else {
+		bootstrapped := make(chan struct{})
+		nodeNums := []int{5}
 		color.Yellow("setting up 1 node")
+		g.Go(func() error {
+			
+			return manager.StartNetwork(gctx, vm, nodeNums, bootstrapped)
+		})
+
+		// Only setup network if a custom VM is provided and the network has finished
+		// bootstrapping
+		select {
+		case <-bootstrapped:
+			if len(vm) > 0 && gctx.Err() == nil {
+				g.Go(func() error {
+					return runner.SetupSubnet(gctx, nodeNums, vmGenesis, false)
+				})
+			}
+		case <-gctx.Done():
+		}
 	}
 
 	color.Red("ava-sim exited with error: %s", g.Wait())

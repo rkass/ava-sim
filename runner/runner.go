@@ -28,7 +28,77 @@ const (
 	validatorEndDiff   = 30 * 24 * time.Hour // 30 days
 )
 
-func SetupSubnet(ctx context.Context, nodeNums []int, vmGenesis string) error {
+func addValidatorToSubnet(ctx context.Context, nodeNums []int, client platformvm.Client, userPass api.UserPass, fundedAddress string, subnetID string) error {
+		// Add all validators to subnet with equal weight
+	for _, nodeID := range manager.NodeIDs(nodeNums) {
+		txID, err := client.AddSubnetValidator(
+			userPass, []string{fundedAddress}, fundedAddress,
+			subnetID, nodeID, validatorWeight,
+			uint64(time.Now().Add(validatorStartDiff).Unix()),
+			uint64(time.Now().Add(validatorEndDiff).Unix()),
+		)
+		if err != nil {
+			return fmt.Errorf("unable to add subnet validator: %w", err)
+		}
+
+		for {
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
+			status, _ := client.GetTxStatus(txID, true)
+			if status.Status == platformvm.Committed {
+				break
+			}
+			color.Yellow("waiting for add subnet validator (%s) tx (%s) to be accepted", nodeID, txID)
+			time.Sleep(waitTime)
+		}
+		color.Cyan("add subnet validator (%s) tx (%s) accepted", nodeID, txID)
+	}
+	return nil
+}
+
+func ensureNodesValidatingSubnet(ctx context.Context, nodeURLs []string, blockchainID ids.ID, nodeIDs []string) error {
+	// Ensure all nodes are validating subnet
+	for i, url := range nodeURLs {
+		nClient := platformvm.NewClient(url, constants.HTTPTimeout)
+		for {
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
+			status, _ := nClient.GetBlockchainStatus(blockchainID.String())
+			if status == platformvm.Validating {
+				break
+			}
+			color.Yellow("waiting for validating status for %s", nodeIDs[i])
+			time.Sleep(longWaitTime)
+		}
+		color.Cyan("%s validating blockchain %s", nodeIDs[i], blockchainID)
+	}
+	return nil
+}
+
+func ensureNetworkBootstrapped(ctx context.Context, nodeURLs []string, blockchainID ids.ID, nodeIDs []string) error {
+	// Ensure network bootstrapped
+	for i, url := range nodeURLs {
+		nClient := info.NewClient(url, constants.HTTPTimeout)
+		for {
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
+			bootstrapped, _ := nClient.IsBootstrapped(blockchainID.String())
+			if bootstrapped {
+				break
+			}
+			color.Yellow("waiting for %s to bootstrap %s", nodeIDs[i], blockchainID.String())
+			time.Sleep(waitTime)
+		}
+		color.Cyan("%s bootstrapped %s", nodeIDs[i], blockchainID)
+	}
+	return nil
+}
+
+
+func SetupSubnet(ctx context.Context, nodeNums []int, vmGenesis string, bootstrap bool) error {
 	color.Cyan("creating subnet")
 	var (
 		nodeURLs = manager.NodeURLs(nodeNums)
@@ -62,29 +132,31 @@ func SetupSubnet(ctx context.Context, nodeNums []int, vmGenesis string) error {
 	color.Cyan("found %d on address %s", balance, fundedAddress)
 
 	// Create a subnet
-	subnetIDTx, err := client.CreateSubnet(
-		userPass,
-		[]string{fundedAddress},
-		fundedAddress,
-		[]string{fundedAddress},
-		1,
-	)
-	if err != nil {
-		return fmt.Errorf("unable to create subnet: %w", err)
-	}
+	if bootstrap {
+		subnetIDTx, err := client.CreateSubnet(
+			userPass,
+			[]string{fundedAddress},
+			fundedAddress,
+			[]string{fundedAddress},
+			1,
+		)
+		if err != nil {
+			return fmt.Errorf("unable to create subnet: %w", err)
+		}
 
-	for {
-		if ctx.Err() != nil {
-			return ctx.Err()
+		for {
+			if ctx.Err() != nil {
+				return ctx.Err()
+			}
+			status, _ := client.GetTxStatus(subnetIDTx, true)
+			if status.Status == platformvm.Committed {
+				break
+			}
+			color.Yellow("waiting for subnet creation tx (%s) to be accepted", subnetIDTx)
+			time.Sleep(waitTime)
 		}
-		status, _ := client.GetTxStatus(subnetIDTx, true)
-		if status.Status == platformvm.Committed {
-			break
-		}
-		color.Yellow("waiting for subnet creation tx (%s) to be accepted", subnetIDTx)
-		time.Sleep(waitTime)
+		color.Cyan("subnet creation tx (%s) accepted", subnetIDTx)
 	}
-	color.Cyan("subnet creation tx (%s) accepted", subnetIDTx)
 
 	// Confirm created subnet appears in subnet list
 	subnets, err := client.GetSubnets([]ids.ID{})
@@ -97,18 +169,25 @@ func SetupSubnet(ctx context.Context, nodeNums []int, vmGenesis string) error {
 		return fmt.Errorf("expected subnet %s but got %s", constants.WhitelistedSubnets, subnetID)
 	}
 
-	// Add all validators to subnet with equal weight
-	for _, nodeID := range manager.NodeIDs(nodeNums) {
-		txID, err := client.AddSubnetValidator(
-			userPass, []string{fundedAddress}, fundedAddress,
-			subnetID, nodeID, validatorWeight,
-			uint64(time.Now().Add(validatorStartDiff).Unix()),
-			uint64(time.Now().Add(validatorEndDiff).Unix()),
+	err = addValidatorToSubnet(ctx, nodeNums, client, userPass, fundedAddress, subnetID)
+	if err != nil {
+		return fmt.Errorf("Some nodes not validating subnet :%w", err)
+	}
+
+	// Create blockchain
+
+	if bootstrap {
+		genesis, err := ioutil.ReadFile(vmGenesis)
+		if err != nil {
+			return fmt.Errorf("could not read genesis file (%s): %w", vmGenesis, err)
+		}
+		txID, err := client.CreateBlockchain(
+			userPass, []string{fundedAddress}, fundedAddress, rSubnetID,
+			constants.VMID, []string{}, constants.VMName, genesis,
 		)
 		if err != nil {
-			return fmt.Errorf("unable to add subnet validator: %w", err)
+			return fmt.Errorf("could not create blockchain: %w", err)
 		}
-
 		for {
 			if ctx.Err() != nil {
 				return ctx.Err()
@@ -117,36 +196,11 @@ func SetupSubnet(ctx context.Context, nodeNums []int, vmGenesis string) error {
 			if status.Status == platformvm.Committed {
 				break
 			}
-			color.Yellow("waiting for add subnet validator (%s) tx (%s) to be accepted", nodeID, txID)
+			color.Yellow("waiting for create blockchain tx (%s) to be accepted", txID)
 			time.Sleep(waitTime)
 		}
-		color.Cyan("add subnet validator (%s) tx (%s) accepted", nodeID, txID)
+		color.Cyan("create blockchain tx (%s) accepted", txID)
 	}
-
-	// Create blockchain
-	genesis, err := ioutil.ReadFile(vmGenesis)
-	if err != nil {
-		return fmt.Errorf("could not read genesis file (%s): %w", vmGenesis, err)
-	}
-	txID, err := client.CreateBlockchain(
-		userPass, []string{fundedAddress}, fundedAddress, rSubnetID,
-		constants.VMID, []string{}, constants.VMName, genesis,
-	)
-	if err != nil {
-		return fmt.Errorf("could not create blockchain: %w", err)
-	}
-	for {
-		if ctx.Err() != nil {
-			return ctx.Err()
-		}
-		status, _ := client.GetTxStatus(txID, true)
-		if status.Status == platformvm.Committed {
-			break
-		}
-		color.Yellow("waiting for create blockchain tx (%s) to be accepted", txID)
-		time.Sleep(waitTime)
-	}
-	color.Cyan("create blockchain tx (%s) accepted", txID)
 
 	// Validate blockchain exists
 	blockchains, err := client.GetBlockchains()
@@ -164,38 +218,14 @@ func SetupSubnet(ctx context.Context, nodeNums []int, vmGenesis string) error {
 		return errors.New("could not find blockchain")
 	}
 
-	// Ensure all nodes are validating subnet
-	for i, url := range nodeURLs {
-		nClient := platformvm.NewClient(url, constants.HTTPTimeout)
-		for {
-			if ctx.Err() != nil {
-				return ctx.Err()
-			}
-			status, _ := nClient.GetBlockchainStatus(blockchainID.String())
-			if status == platformvm.Validating {
-				break
-			}
-			color.Yellow("waiting for validating status for %s", nodeIDs[i])
-			time.Sleep(longWaitTime)
-		}
-		color.Cyan("%s validating blockchain %s", nodeIDs[i], blockchainID)
+	err = ensureNodesValidatingSubnet(ctx, nodeURLs, blockchainID, nodeIDs)
+	if err != nil {
+		return fmt.Errorf("could not ensure nodes are validating subnet: %w", err)
 	}
 
-	// Ensure network bootstrapped
-	for i, url := range nodeURLs {
-		nClient := info.NewClient(url, constants.HTTPTimeout)
-		for {
-			if ctx.Err() != nil {
-				return ctx.Err()
-			}
-			bootstrapped, _ := nClient.IsBootstrapped(blockchainID.String())
-			if bootstrapped {
-				break
-			}
-			color.Yellow("waiting for %s to bootstrap %s", nodeIDs[i], blockchainID.String())
-			time.Sleep(waitTime)
-		}
-		color.Cyan("%s bootstrapped %s", nodeIDs[i], blockchainID)
+	err = ensureNetworkBootstrapped(ctx, nodeURLs, blockchainID, nodeIDs)
+	if err != nil {
+		return fmt.Errorf("could not ensure network is bootstrapped: %w", err)
 	}
 
 	// Print endpoints where VM is accessible

@@ -52,13 +52,18 @@ var (
 	//go:embed certs/keys5/staker.key
 	keys5StakerKey []byte
 
+	//go:embed certs/keys6/staker.crt
+	keys6StakerCrt []byte
+	//go:embed certs/keys6/staker.key
+	keys6StakerKey []byte
 
-	nodeCerts = [][]byte{keys1StakerCrt, keys2StakerCrt, keys3StakerCrt, keys4StakerCrt, keys5StakerCrt}
-	nodeKeys  = [][]byte{keys1StakerKey, keys2StakerKey, keys3StakerKey, keys4StakerKey, keys5StakerKey}
+
+	nodeCerts = [][]byte{keys1StakerCrt, keys2StakerCrt, keys3StakerCrt, keys4StakerCrt, keys5StakerCrt, keys6StakerCrt}
+	nodeKeys  = [][]byte{keys1StakerKey, keys2StakerKey, keys3StakerKey, keys4StakerKey, keys5StakerKey, keys6StakerKey}
 )
 
 func NodeIDs(nodeNums[] int) []string {
-	nodeCerts := [][]byte{keys1StakerCrt, keys2StakerCrt, keys3StakerCrt, keys4StakerCrt, keys5StakerCrt}
+	nodeCerts := [][]byte{keys1StakerCrt, keys2StakerCrt, keys3StakerCrt, keys4StakerCrt, keys5StakerCrt, keys6StakerCrt}
 	nodeIDs := make([]string, len(nodeNums))
 	for i, nodeNum := range nodeNums {
 		cert := nodeCerts[nodeNum]
@@ -165,7 +170,8 @@ func getNodeConfig(nodeNum int, dir string, vmPath string, pluginsDir string) no
 	nodeConfig.PluginDir = pluginsDir
 
 	// write node id of node
-	f, _ := os.Create("/node-ids/" + strconv.Itoa(nodeNum))
+		h, _ := os.LookupEnv("HOME")
+		f, _ := os.Create(h + "/node-ids/" + strconv.Itoa(nodeNum))
 	nodeNums := []int{nodeNum}
 	nodeIds := NodeIDs(nodeNums)
 	f.Write([]byte(nodeIds[0]))
@@ -185,6 +191,7 @@ func checkBootstrapped(ctx context.Context, nodeNums []int, bootstrapped chan st
 
 	for i, url := range nodeURLs {
 		client := info.NewClient(url, constants.HTTPTimeout)
+
 		for {
 			if ctx.Err() != nil {
 				color.Red("stopping bootstrapped check: %v", ctx.Err())
@@ -208,9 +215,20 @@ func checkBootstrapped(ctx context.Context, nodeNums []int, bootstrapped chan st
 				time.Sleep(waitDiff)
 				continue
 			}
+
+			us, err := client.Uptime()
+			if err != nil {
+				color.Yellow("waiting for %s to begin staking", nodeIDs[i])
+				time.Sleep(waitDiff)
+				continue
+			}
+
+			color.Yellow("Uptime %s", us)
+
 			color.Cyan("%s is bootstrapped and connected", nodeIDs[i])
 			break
 		}
+
 	}
 
 	color.Cyan("all nodes bootstrapped")
