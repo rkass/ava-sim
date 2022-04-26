@@ -3,6 +3,7 @@ package manager
 import (
 	"context"
 	_ "embed"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -21,7 +22,7 @@ import (
 
 const (
 	bootstrapID = "NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg"
-	bootstrapIP = "127.0.0.1:9651"
+	bootstrapIP = "127.0.0.1:9653"
 	waitDiff    = 10 * time.Second
 )
 
@@ -108,6 +109,8 @@ func StartNetwork(ctx context.Context, vmPath string, nodeNums []int, bootstrapp
 		}
 	}
 
+
+
 	nodeConfigs := make([]node.Config, len(nodeNums))
 	for i, nodeNum := range nodeNums {
 		nodeConfigs[i] = getNodeConfig(nodeNum, dir, vmPath, pluginsDir)
@@ -190,7 +193,7 @@ func checkBootstrapped(ctx context.Context, nodeNums []int, bootstrapped chan st
 	)
 
 	for i, url := range nodeURLs {
-		client := info.NewClient(url, constants.HTTPTimeout)
+		client := info.NewClient(url)
 
 		for {
 			if ctx.Err() != nil {
@@ -199,7 +202,7 @@ func checkBootstrapped(ctx context.Context, nodeNums []int, bootstrapped chan st
 			}
 			bootstrapped := true
 			for _, chain := range constants.Chains {
-				chainBootstrapped, _ := client.IsBootstrapped(chain)
+				chainBootstrapped, _ := client.IsBootstrapped(ctx, chain)
 				if !chainBootstrapped {
 					color.Yellow("waiting for %s to bootstrap %s-chain", nodeIDs[i], chain)
 					bootstrapped = false
@@ -210,13 +213,13 @@ func checkBootstrapped(ctx context.Context, nodeNums []int, bootstrapped chan st
 				time.Sleep(waitDiff)
 				continue
 			}
-			if peers, _ := client.Peers(); len(peers) < constants.NumNodes-1 {
+			if peers, _ := client.Peers(ctx); len(peers) < constants.NumNodes-1 {
 				color.Yellow("waiting for %s to connect to all peers (%d/%d)", nodeIDs[i], len(peers), constants.NumNodes-1)
 				time.Sleep(waitDiff)
 				continue
 			}
 
-			us, err := client.Uptime()
+			us, err := client.Uptime(ctx)
 			if err != nil {
 				color.Yellow("waiting for %s to begin staking", nodeIDs[i])
 				time.Sleep(waitDiff)
@@ -244,7 +247,11 @@ func checkBootstrapped(ctx context.Context, nodeNums []int, bootstrapped chan st
 }
 
 func runApp(g *errgroup.Group, ctx context.Context, nodeNum int, config node.Config) error {
-
+	configJSON, err := json.Marshal(config)
+	if err != nil {
+		return fmt.Errorf("couldn't marshal config: %w", err)
+	}
+	fmt.Printf("node config %s", configJSON)
 	app := process.NewApp(config)
 
 	// Start running the AvalancheGo application

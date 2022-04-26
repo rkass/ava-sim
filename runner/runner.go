@@ -15,6 +15,7 @@ import (
 	"github.com/ava-labs/avalanchego/api/keystore"
 	"github.com/ava-labs/avalanchego/ids"
 	"github.com/ava-labs/avalanchego/vms/platformvm"
+	"github.com/ava-labs/avalanchego/vms/platformvm/status"
 	"github.com/fatih/color"
 )
 
@@ -31,7 +32,7 @@ const (
 func addValidatorToSubnet(ctx context.Context, nodeNums []int, client platformvm.Client, userPass api.UserPass, fundedAddress string, subnetID string) error {
 		// Add all validators to subnet with equal weight
 	for _, nodeID := range manager.NodeIDs(nodeNums) {
-		txID, err := client.AddSubnetValidator(
+		txID, err := client.AddSubnetValidator(ctx,
 			userPass, []string{fundedAddress}, fundedAddress,
 			subnetID, nodeID, validatorWeight,
 			uint64(time.Now().Add(validatorStartDiff).Unix()),
@@ -45,8 +46,8 @@ func addValidatorToSubnet(ctx context.Context, nodeNums []int, client platformvm
 			if ctx.Err() != nil {
 				return ctx.Err()
 			}
-			status, _ := client.GetTxStatus(txID, true)
-			if status.Status == platformvm.Committed {
+			c_status, _ := client.GetTxStatus(ctx, txID, true)
+			if c_status.Status == status.Committed {
 				break
 			}
 			color.Yellow("waiting for add subnet validator (%s) tx (%s) to be accepted", nodeID, txID)
@@ -60,13 +61,13 @@ func addValidatorToSubnet(ctx context.Context, nodeNums []int, client platformvm
 func ensureNodesValidatingSubnet(ctx context.Context, nodeURLs []string, blockchainID ids.ID, nodeIDs []string) error {
 	// Ensure all nodes are validating subnet
 	for i, url := range nodeURLs {
-		nClient := platformvm.NewClient(url, constants.HTTPTimeout)
+		nClient := platformvm.NewClient(url)
 		for {
 			if ctx.Err() != nil {
 				return ctx.Err()
 			}
-			status, _ := nClient.GetBlockchainStatus(blockchainID.String())
-			if status == platformvm.Validating {
+			c_status, _ := nClient.GetBlockchainStatus(ctx, blockchainID.String())
+			if c_status == status.Validating {
 				break
 			}
 			color.Yellow("waiting for validating status for %s", nodeIDs[i])
@@ -80,12 +81,12 @@ func ensureNodesValidatingSubnet(ctx context.Context, nodeURLs []string, blockch
 func ensureNetworkBootstrapped(ctx context.Context, nodeURLs []string, blockchainID ids.ID, nodeIDs []string) error {
 	// Ensure network bootstrapped
 	for i, url := range nodeURLs {
-		nClient := info.NewClient(url, constants.HTTPTimeout)
+		nClient := info.NewClient(url)
 		for {
 			if ctx.Err() != nil {
 				return ctx.Err()
 			}
-			bootstrapped, _ := nClient.IsBootstrapped(blockchainID.String())
+			bootstrapped, _ := nClient.IsBootstrapped(ctx, blockchainID.String())
 			if bootstrapped {
 				break
 			}
@@ -111,21 +112,21 @@ func SetupSubnet(ctx context.Context, nodeNums []int, vmGenesis string, bootstra
 	)
 
 	// Create user
-	kclient := keystore.NewClient(nodeURLs[0], constants.HTTPTimeout)
-	ok, err := kclient.CreateUser(userPass)
+	kclient := keystore.NewClient(nodeURLs[0])
+	ok, err := kclient.CreateUser(ctx, userPass)
 	if !ok || err != nil {
 		return fmt.Errorf("could not create user: %w", err)
 	}
 
 	// Connect to local network
-	client := platformvm.NewClient(nodeURLs[0], constants.HTTPTimeout)
+	client := platformvm.NewClient(nodeURLs[0])
 
 	// Import genesis key
-	fundedAddress, err := client.ImportKey(userPass, genesisKey)
+	fundedAddress, err := client.ImportKey(ctx, userPass, genesisKey)
 	if err != nil {
 		return fmt.Errorf("unable to import genesis key: %w", err)
 	}
-	balance, err := client.GetBalance(fundedAddress)
+	balance, err := client.GetBalance(ctx, []string{fundedAddress})
 	if err != nil {
 		return fmt.Errorf("unable to get genesis key balance: %w", err)
 	}
@@ -134,6 +135,7 @@ func SetupSubnet(ctx context.Context, nodeNums []int, vmGenesis string, bootstra
 	// Create a subnet
 	if bootstrap {
 		subnetIDTx, err := client.CreateSubnet(
+			ctx,
 			userPass,
 			[]string{fundedAddress},
 			fundedAddress,
@@ -148,8 +150,8 @@ func SetupSubnet(ctx context.Context, nodeNums []int, vmGenesis string, bootstra
 			if ctx.Err() != nil {
 				return ctx.Err()
 			}
-			status, _ := client.GetTxStatus(subnetIDTx, true)
-			if status.Status == platformvm.Committed {
+			c_status, _ := client.GetTxStatus(ctx, subnetIDTx, true)
+			if c_status.Status == status.Committed {
 				break
 			}
 			color.Yellow("waiting for subnet creation tx (%s) to be accepted", subnetIDTx)
@@ -159,7 +161,7 @@ func SetupSubnet(ctx context.Context, nodeNums []int, vmGenesis string, bootstra
 	}
 
 	// Confirm created subnet appears in subnet list
-	subnets, err := client.GetSubnets([]ids.ID{})
+	subnets, err := client.GetSubnets(ctx,[]ids.ID{})
 	if err != nil {
 		return fmt.Errorf("cannot query subnets: %w", err)
 	}
@@ -181,7 +183,7 @@ func SetupSubnet(ctx context.Context, nodeNums []int, vmGenesis string, bootstra
 		if err != nil {
 			return fmt.Errorf("could not read genesis file (%s): %w", vmGenesis, err)
 		}
-		txID, err := client.CreateBlockchain(
+		txID, err := client.CreateBlockchain(ctx,
 			userPass, []string{fundedAddress}, fundedAddress, rSubnetID,
 			constants.VMID, []string{}, constants.VMName, genesis,
 		)
@@ -192,8 +194,8 @@ func SetupSubnet(ctx context.Context, nodeNums []int, vmGenesis string, bootstra
 			if ctx.Err() != nil {
 				return ctx.Err()
 			}
-			status, _ := client.GetTxStatus(txID, true)
-			if status.Status == platformvm.Committed {
+			c_status, _ := client.GetTxStatus(ctx, txID, true)
+			if c_status.Status == status.Committed {
 				break
 			}
 			color.Yellow("waiting for create blockchain tx (%s) to be accepted", txID)
@@ -203,7 +205,7 @@ func SetupSubnet(ctx context.Context, nodeNums []int, vmGenesis string, bootstra
 	}
 
 	// Validate blockchain exists
-	blockchains, err := client.GetBlockchains()
+	blockchains, err := client.GetBlockchains(ctx)
 	if err != nil {
 		return fmt.Errorf("could not query blockchains: %w", err)
 	}
