@@ -9,7 +9,6 @@ import (
 	"path"
 	"syscall"
 
-	// "github.com/ava-labs/avalanchego/staking"
 	"github.com/fatih/color"
 	"github.com/zapalabs/ava-sim/constants"
 	"github.com/zapalabs/ava-sim/manager"
