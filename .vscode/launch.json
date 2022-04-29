@@ -18,7 +18,7 @@
             "mode": "auto",
             "program": "${workspaceFolder}/main/main.go",
             "cwd": "${workspaceFolder}",
-            "args": ["${workspaceFolder}/../zapavm/builds/zapavm", "${workspaceFolder}/../zapavm/builds/emptygenesis.txt"]
+            "args": ["/Users/rkass/binaries/avalanchego/build/plugins/zapavm", "${workspaceFolder}/../zapavm/builds/emptygenesis.txt"]
         },
         {
             "name": "New Node for Existing Network",

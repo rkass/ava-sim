@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/signal"
 	"path"
-	"strconv"
 	"syscall"
 
 	// "github.com/ava-labs/avalanchego/staking"
@@ -19,8 +18,7 @@ import (
 )
 
 func main() {
-	x := 3
-	color.Yellow(strconv.Itoa(x))
+	os.Setenv("AVASIM", "true")
 	var vm, vmGenesis string
 	switch len(os.Args) {
 	case 1: // normal network
