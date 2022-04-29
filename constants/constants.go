@@ -12,7 +12,7 @@ const (
 	VMName = "kewl vm"
 
 	HTTPTimeout  = 10 * time.Second
-	BaseHTTPPort = 9650
+	BaseHTTPPort = 9652
 	NumNodes     = 5 //not working w 2
 
 	FilePerms = 0777

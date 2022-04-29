@@ -3,3 +3,5 @@ system-plugins
 timestampvm
 ava-sim
 build/
+*DS_STORE
+*debug_bin

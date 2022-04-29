@@ -17,7 +17,8 @@ func createNodeConfig(pluginDir string, args []string) (node.Config, error) {
 		return node.Config{}, err
 	}
 
-	return config.GetNodeConfig(v, pluginDir)
+	conf, err := config.GetNodeConfig(v, pluginDir)
+	return conf, err
 }
 
 // Flags represents available CLI flags when starting a node
@@ -174,7 +175,7 @@ func defaultFlags() Flags {
 		APIKeystoreEnabled:                      true,
 		APIMetricsEnabled:                       true,
 		HTTPHost:                                "127.0.0.1",
-		HTTPPort:                                9650,
+		HTTPPort:                                9652,
 		HTTPTLSEnabled:                          false,
 		HTTPTLSCertFile:                         "",
 		HTTPTLSKeyFile:                          "",
@@ -214,7 +215,7 @@ func defaultFlags() Flags {
 		NetworkPeerListGossipSize:               50,
 		NetworkPeerListSize:                     20,
 		StakingEnabled:                          false,
-		StakingPort:                             9651,
+		StakingPort:                             9653,
 		StakingDisabledWeight:                   1,
 		StakingTLSKeyFile:                       "",
 		StakingTLSCertFile:                      "",
@@ -227,7 +228,7 @@ func defaultFlags() Flags {
 		APIInfoEnabled:                          true,
 		IPCSChainIDs:                            "",
 		IPCSPath:                                "/tmp",
-		FDLimit:                                 32768,
+		FDLimit:                                 10240,
 		BenchlistDuration:                       "1h",
 		BenchlistFailThreshold:                  10,
 		BenchlistMinFailingDuration:             "5m",
@@ -326,8 +327,7 @@ func flagsToArgs(flags Flags) []string {
 		"--network-timeout-coefficient=" + strconv.Itoa(flags.NetworkTimeoutCoefficient),
 		"--network-timeout-halflife=" + flags.NetworkTimeoutHalflife,
 		"--network-peer-list-gossip-frequency=" + flags.NetworkPeerListGossipFrequency,
-		"--network-peer-list-gossip-size=" + strconv.Itoa(flags.NetworkPeerListGossipSize),
-		"--network-peer-list-size=" + strconv.Itoa(flags.NetworkPeerListSize),
+		"--network-peer-list-num-validator-ips=" + strconv.Itoa(flags.NetworkPeerListSize),
 		"--staking-enabled=" + strconv.FormatBool(flags.StakingEnabled),
 		"--staking-port=" + stakingPortString,
 		"--staking-disabled-weight=" + strconv.Itoa(flags.StakingDisabledWeight),
@@ -347,7 +347,6 @@ func flagsToArgs(flags Flags) []string {
 		"--benchlist-duration=" + flags.BenchlistDuration,
 		"--benchlist-fail-threshold=" + strconv.Itoa(flags.BenchlistFailThreshold),
 		"--benchlist-min-failing-duration=" + flags.BenchlistMinFailingDuration,
-		"--benchlist-peer-summary-enabled=" + strconv.FormatBool(flags.BenchlistPeerSummaryEnabled),
 		fmt.Sprintf("--uptime-requirement=%f", flags.UptimeRequirement),
 		"--bootstrap-retry-enabled=" + strconv.FormatBool(flags.RetryBootstrap),
 		"--health-check-averager-halflife=" + flags.HealthCheckAveragerHalflifeKey,

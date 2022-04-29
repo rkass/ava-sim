@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"fmt"
 	"os"
 	"os/signal"
@@ -16,6 +17,7 @@ import (
 )
 
 func main() {
+	os.Setenv("AVASIM", "true")
 	var vm, vmGenesis string
 	switch len(os.Args) {
 	case 1: // normal network
@@ -84,13 +86,31 @@ func main() {
 		case <-bootstrapped:
 			if len(vm) > 0 && gctx.Err() == nil {
 				g.Go(func() error {
-					return runner.SetupSubnet(gctx, nodeNums, vmGenesis)
+					return runner.SetupSubnet(gctx, nodeNums, vmGenesis, true)
 				})
 			}
 		case <-gctx.Done():
 		}
 	} else {
+		bootstrapped := make(chan struct{})
+		nodeNums := []int{5}
 		color.Yellow("setting up 1 node")
+		g.Go(func() error {
+			
+			return manager.StartNetwork(gctx, vm, nodeNums, bootstrapped)
+		})
+
+		// Only setup network if a custom VM is provided and the network has finished
+		// bootstrapping
+		select {
+		case <-bootstrapped:
+			if len(vm) > 0 && gctx.Err() == nil {
+				g.Go(func() error {
+					return runner.SetupSubnet(gctx, nodeNums, vmGenesis, false)
+				})
+			}
+		case <-gctx.Done():
+		}
 	}
 
 	color.Red("ava-sim exited with error: %s", g.Wait())
