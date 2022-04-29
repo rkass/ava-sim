@@ -39,11 +39,6 @@ func main() {
 			panic(fmt.Sprintf("%s does not exist", vmGenesis))
 		}
 		color.Yellow("vm-genesis set to: %s", vmGenesis)
-	case 4:
-		// staking.InitNodeStakingKeyPair("/Users/rkass/repos/zapa/ava-sim/manager/certs/keys6/staker.key", "/Users/rkass/repos/zapa/ava-sim/manager/certs/keys6/staker.crt")
-		p, e := tls.LoadX509KeyPair("/Users/rkass/repos/zapa/ava-sim/manager/certs/keys6/staker.crt", "/Users/rkass/repos/zapa/ava-sim/manager/certs/keys6/staker.key")
-		color.Yellow("initialized staking pair for node 6 %s %s", p, e)
-		os.Exit(0)
 	default:
 		panic("invalid arguments (expecting no arguments or [vm] [vm-genesis])")
 	}
