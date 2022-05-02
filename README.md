@@ -35,7 +35,7 @@ go run main/main.go ../zapavm/builds/zapavm ../zapavm/builds/emptygenesis.txt
 
 ## Debugging with VS Code
 
-- On the left-hand-side, navigate to `Run and Debug`, and select `Zapavm` which is defined in the [launch.json](./vscode/launch.json) to run. You will have to update this spec to be compatible with your own directory structure.
+- On the left-hand-side, navigate to `Run and Debug`, and select `Zapavm` which is defined in the [launch.json](./.vscode/launch.json) to run. You will have to update this spec to be compatible with your own directory structure.
 
 ## Logs
 
@@ -73,4 +73,4 @@ Once you have 5 nodes running, you might want to observe bootstrapping behavior.
 go run main/main.go ../zapavm/builds/zapavm
 ```
 
-or see the `New Node for Existing Network` in [launch.json](./vscode/launch.json) .
+or see the `New Node for Existing Network` in [launch.json](./.vscode/launch.json) .
