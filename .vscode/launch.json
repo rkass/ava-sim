@@ -12,7 +12,7 @@
             "program": "${workspaceFolder}/main/main.go"
         },
         {
-            "name": "Custom VM custom genesis",
+            "name": "Zapavm",
             "type": "go",
             "request": "launch",
             "mode": "auto",
