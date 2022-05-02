@@ -35,7 +35,7 @@ go run main/main.go ../zapavm/builds/zapavm ../zapavm/builds/emptygenesis.txt
 
 ## Debugging with VS Code
 
-- On the left-hand-side, navigate to `Run and Debug`, and select `Zapavm which is defined in the `launch.json` to run.
+- On the left-hand-side, navigate to `Run and Debug`, and select `Zapavm` which is defined in the [launch.json](./vscode/launch.json) to run. You will have to update this spec to be compatible with your own directory structure.
 
 ## Logs
 
@@ -64,3 +64,13 @@ NodeID-P7oB2McjBGgW2NXXWVYjV8JEDFoW9xDE5: http://127.0.0.1:9660/ext/bc/28TtJ7sdY
 ## Interacting with the Chain
 
 Use the per-node endpoints defined above to issue API requests. See [available API methods](https://github.com/zapalabs/zapavm#api)
+
+## Bootstrapping a 6th Node
+
+Once you have 5 nodes running, you might want to observe bootstrapping behavior. To spin up a 6th node, run:
+
+```
+go run main/main.go ../zapavm/builds/zapavm
+```
+
+or see the `New Node for Existing Network` in [launch.json](./vscode/launch.json) .
