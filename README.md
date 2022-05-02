@@ -14,7 +14,7 @@ VM](https://docs.avax.network/build/tutorials/platform/create-custom-blockchain)
 ### Prerequisites
 - You must have [Golang](https://golang.org/doc/install) >= `1.16` and a configured
 [`$GOPATH`](https://github.com/golang/go/wiki/SettingGOPATH).
-- You must have zapavm already built.
+- You must have zapavm already built. See https://github.com/zapalabs/zapavm#building for instructions on how to build the plugin.
 - Write out the following files. These files are queried by the nodes starting up to know which node number they are, which lets them infer the port number of their corresponding zcash.
 
 ```
