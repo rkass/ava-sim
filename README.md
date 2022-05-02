@@ -11,11 +11,13 @@ VM](https://docs.avax.network/build/tutorials/platform/create-custom-blockchain)
 - Specific needs for running zapavm
 - Ability to spin up a 6th node that bootstraps from an already running network.
 
-### Prerequisites
+### Running
+
 - You must have [Golang](https://golang.org/doc/install) >= `1.16` and a configured
 [`$GOPATH`](https://github.com/golang/go/wiki/SettingGOPATH).
-- You must have zapavm already built. See https://github.com/zapalabs/zapavm#building for instructions on how to build the plugin.
-- Write out the following files. These files are queried by the nodes starting up to know which node number they are, which lets them infer the port number of their corresponding zcash.
+
+1. Build Zapavm or use the pre-built binary. See https://github.com/zapalabs/zapavm#building for instructions on how to build the plugin.
+2. Write out the following files. These files are queried by the nodes starting up to know which node number they are, which lets them infer the port number of their corresponding zcash.
 
 ```
 =>echo "NodeID-7Xhw2mDxuDS44j42TCB6U5579esbSt3Lg" > ~/node-ids/0
@@ -25,17 +27,18 @@ VM](https://docs.avax.network/build/tutorials/platform/create-custom-blockchain)
 =>echo "NodeID-P7oB2McjBGgW2NXXWVYjV8JEDFoW9xDE5" > ~/node-ids/4
 ```
 
-- From the `ava-sim` project root, run `./scripts/prepare-system-plugins.sh`
+3. From the `ava-sim` project root, run `./scripts/prepare-system-plugins.sh`
 
-## Running 
-
+4. Run it.
 ```
 go run main/main.go ../zapavm/builds/zapavm ../zapavm/builds/emptygenesis.txt
 ```
 
+5. Shutting down. After terminating the process, run `pkill -f ava-sim`. I've found this step necessary as terminating the process sometimes leaves orphaned processes.
+
 ## Debugging with VS Code
 
-- On the left-hand-side, navigate to `Run and Debug`, and select `Zapavm` which is defined in the [launch.json](./.vscode/launch.json) to run. You will have to update this spec to be compatible with your own directory structure.
+If you'd prefer to debug with VS Code, follow steps 1-3 above, and then in VS Code navigate to `Run and Debug`, and select `Zapavm` which is defined in the [launch.json](./.vscode/launch.json) to run. You will have to update this spec to be compatible with your own directory structure.
 
 ## Logs
 
